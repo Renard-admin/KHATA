@@ -1,0 +1,160 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Document ID: {uid}
+    // Fields:
+    //   - uid: string (required)
+    //   - displayName: string (required)
+    //   - email: string (optional)
+    //   - photoURL: string (optional)
+    //   - xp: number (required)
+    //   - level: string (required)
+    //   - role: string (required, 'admin' | 'member')
+    //   - totalContributed: number (optional)
+    //   - tasksCompleted: number (optional)
+    //
+    // Collection: transactions
+    // Document ID: auto-generated
+    // Fields:
+    //   - userId: string (required)
+    //   - userName: string (required)
+    //   - amount: number (required)
+    //   - type: string (required, 'deposit' | 'withdrawal')
+    //   - comment: string (optional)
+    //   - timestamp: timestamp (required)
+    //
+    // Collection: tasks
+    // Document ID: auto-generated
+    // Fields:
+    //   - title: string (required)
+    //   - description: string (optional)
+    //   - assignedTo: string (optional)
+    //   - status: string (required, 'pending' | 'completed')
+    //   - type: string (required, 'duty' | 'task' | 'shopping')
+    //   - xpReward: number (required)
+    //   - deadline: timestamp (optional)
+    //   - price: number (optional)
+    //   - completedBy: string (optional)
+    //   - completedAt: timestamp (optional)
+    //
+    // Collection: events
+    // Document ID: auto-generated
+    // Fields:
+    //   - title: string (required)
+    //   - description: string (optional)
+    //   - time: timestamp (required)
+    //   - location: string (optional)
+    //   - creatorUid: string (required)
+    //   - participants: list (required)
+    //   - status: string (required, 'planned' | 'happened' | 'cancelled')
+    //
+    // Collection: storage
+    // Document ID: auto-generated
+    // Fields:
+    //   - ownerName: string (required)
+    //   - itemName: string (required)
+    //   - location: string (required)
+    //   - timestamp: timestamp (required)
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+         (request.auth.token.email == "mirsiyevr@gmail.com" && request.auth.token.email_verified == true));
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    function isValidUser(data) {
+      return data.uid is string &&
+             data.displayName is string && data.displayName.size() < 100 &&
+             data.xp is number && data.xp >= 0 &&
+             data.role in ['admin', 'member'];
+    }
+
+    function isValidTransaction(data) {
+      return data.userId is string &&
+             data.userName is string &&
+             data.amount is number &&
+             data.type in ['deposit', 'withdrawal'] &&
+             data.timestamp is timestamp;
+    }
+
+    function isValidTask(data) {
+      return data.title is string && data.title.size() < 200 &&
+             data.status in ['pending', 'completed'] &&
+             data.type in ['duty', 'task', 'shopping'] &&
+             data.xpReward is number;
+    }
+
+    function isValidEvent(data) {
+      return data.title is string && data.title.size() < 200 &&
+             data.time is timestamp &&
+             data.creatorUid is string &&
+             data.participants is list &&
+             data.status in ['planned', 'happened', 'cancelled'];
+    }
+
+    function isValidStorageItem(data) {
+      return data.ownerName is string &&
+             data.itemName is string &&
+             data.location is string &&
+             data.timestamp is timestamp;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isOwner(userId) && isValidUser(request.resource.data) && (request.resource.data.role == 'member' || isAdmin());
+      allow update: if isAuthenticated() && (isAdmin() || (isOwner(userId) && request.resource.data.role == resource.data.role && isValidUser(request.resource.data)));
+    }
+
+    match /transactions/{id} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isValidTransaction(request.resource.data) && (isAdmin() || request.resource.data.userId == request.auth.uid);
+      allow update, delete: if isAdmin();
+    }
+
+    match /tasks/{id} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isValidTask(request.resource.data);
+      allow update: if isAuthenticated() && (isAdmin() || (resource.data.status == 'pending' && request.resource.data.status == 'completed' && isValidTask(request.resource.data)));
+      allow delete: if isAdmin();
+    }
+
+    match /events/{id} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isValidEvent(request.resource.data);
+      allow update: if isAuthenticated() && (isAdmin() || resource.data.creatorUid == request.auth.uid);
+      allow delete: if isAdmin();
+    }
+
+    match /storage/{id} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isValidStorageItem(request.resource.data);
+      allow update, delete: if isAuthenticated() && (isAdmin() || resource.data.ownerName == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.displayName);
+    }
+  }
+}

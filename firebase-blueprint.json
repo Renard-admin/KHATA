@@ -1,0 +1,87 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "A member of the KHATA TATARA team.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "Firebase Auth UID" },
+        "displayName": { "type": "string", "description": "Display name" },
+        "email": { "type": "string", "description": "User email" },
+        "photoURL": { "type": "string", "description": "Avatar URL" },
+        "xp": { "type": "integer", "description": "Experience points" },
+        "level": { "type": "string", "description": "Level (Novice, Friend, Active, Legend)" },
+        "role": { "type": "string", "enum": ["admin", "member"], "description": "User role" },
+        "totalContributed": { "type": "number", "description": "Total money contributed to the bank" },
+        "tasksCompleted": { "type": "integer", "description": "Total tasks completed" }
+      },
+      "required": ["uid", "displayName", "xp", "role"]
+    },
+    "Transaction": {
+      "title": "Transaction",
+      "description": "A financial operation in the common bank.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "UID of the user who made the transaction" },
+        "userName": { "type": "string", "description": "Name of the user for display" },
+        "amount": { "type": "number", "description": "Transaction amount (positive for deposit, negative for withdrawal)" },
+        "type": { "type": "string", "enum": ["deposit", "withdrawal"], "description": "Type of transaction" },
+        "comment": { "type": "string", "description": "Transaction comment" },
+        "timestamp": { "type": "string", "format": "date-time", "description": "When the transaction occurred" }
+      },
+      "required": ["userId", "amount", "type", "timestamp"]
+    },
+    "Task": {
+      "title": "Task",
+      "description": "A duty, task, or shopping item.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string", "description": "Task title" },
+        "description": { "type": "string", "description": "Task description" },
+        "assignedTo": { "type": "string", "description": "UID of the assigned user (optional)" },
+        "status": { "type": "string", "enum": ["pending", "completed"], "description": "Task status" },
+        "type": { "type": "string", "enum": ["duty", "task", "shopping"], "description": "Category of the task" },
+        "xpReward": { "type": "integer", "description": "XP reward for completion" },
+        "deadline": { "type": "string", "format": "date-time", "description": "Task deadline" },
+        "price": { "type": "number", "description": "Estimated price for shopping items" },
+        "completedBy": { "type": "string", "description": "UID of the user who completed it" },
+        "completedAt": { "type": "string", "format": "date-time", "description": "When it was completed" }
+      },
+      "required": ["title", "status", "type", "xpReward"]
+    },
+    "Event": {
+      "title": "Event",
+      "description": "A community event or meetup.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string", "description": "Event title" },
+        "description": { "type": "string", "description": "Event description" },
+        "time": { "type": "string", "format": "date-time", "description": "Event time" },
+        "location": { "type": "string", "description": "Event location" },
+        "creatorUid": { "type": "string", "description": "UID of the creator" },
+        "participants": { "type": "array", "items": { "type": "string" }, "description": "List of participant UIDs" },
+        "status": { "type": "string", "enum": ["planned", "happened", "cancelled"], "description": "Event status" }
+      },
+      "required": ["title", "time", "creatorUid", "status"]
+    },
+    "StorageItem": {
+      "title": "StorageItem",
+      "description": "An item stored in the common space.",
+      "type": "object",
+      "properties": {
+        "ownerName": { "type": "string", "description": "Name of the owner" },
+        "itemName": { "type": "string", "description": "Name of the item" },
+        "location": { "type": "string", "description": "Where it is stored" },
+        "timestamp": { "type": "string", "format": "date-time", "description": "When it was left" }
+      },
+      "required": ["ownerName", "itemName", "location", "timestamp"]
+    }
+  },
+  "firestore": {
+    "/users/{uid}": { "schema": "User", "description": "User profiles" },
+    "/transactions/{id}": { "schema": "Transaction", "description": "Bank transaction history" },
+    "/tasks/{id}": { "schema": "Task", "description": "Duties, tasks, and shopping list" },
+    "/events/{id}": { "schema": "Event", "description": "Community events" },
+    "/storage/{id}": { "schema": "StorageItem", "description": "Stored items list" }
+  }
+}
